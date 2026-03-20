@@ -1,0 +1,110 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <ctype.h>
+#include <stdlib.h>
+
+char input[100];
+int pos = 0;
+
+// Skip spaces
+void skipSpaces() {
+    while (input[pos] == ' ') pos++;
+}
+
+// Forward declarations
+int E();
+int T();
+int F();
+
+// F -> (E) | number
+int F() {
+    skipSpaces();
+
+    int value = 0;
+
+    // Handle '('
+    if (input[pos] == '(') {
+        pos++;
+        value = E();
+
+        if (input[pos] == ')')
+            pos++;
+        else {
+            printf("Error: Missing closing parenthesis\n");
+            exit(1);
+        }
+        return value;
+    }
+
+    // Handle number (multi-digit)
+    else if (isdigit(input[pos])) {
+        while (isdigit(input[pos])) {
+            value = value * 10 + (input[pos] - '0');
+            pos++;
+        }
+        return value;
+    }
+
+    printf("Error: Invalid character '%c'\n", input[pos]);
+    exit(1);
+}
+
+// T -> F { (*|/) F }
+int T() {
+    int value = F();
+
+    while (1) {
+        skipSpaces();
+
+        if (input[pos] == '*') {
+            pos++;
+            value *= F();
+        }
+        else if (input[pos] == '/') {
+            pos++;
+            int divisor = F();
+            if (divisor == 0) {
+                printf("Error: Division by zero\n");
+                exit(1);
+            }
+            value /= divisor;
+        }
+        else break;
+    }
+
+    return value;
+}
+
+// E -> T { (+|-) T }
+int E() {
+    int value = T();
+
+    while (1) {
+        skipSpaces();
+
+        if (input[pos] == '+') {
+            pos++;
+            value += T();
+        }
+        else if (input[pos] == '-') {
+            pos++;
+            value -= T();
+        }
+        else break;
+    }
+
+    return value;
+}
+
+// MAIN
+int main() {
+    printf("Enter expr: ");
+    fgets(input, sizeof(input), stdin);
+
+    pos = 0;
+    int result = E();
+
+    printf("Result: %d\n", result);
+
+    return 0;
+}
