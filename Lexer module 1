@@ -1,0 +1,179 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define MAX_TOKEN_LENGTH 100
+#define MAX_INPUT 5000
+
+// ================= TOKEN TYPES =================
+typedef enum {
+    T_INT, T_FLOAT, T_DOUBLE, T_CHAR, T_VOID,
+    T_IF, T_ELSE, T_WHILE, T_FOR, T_DO,
+    T_RETURN, T_BREAK, T_CONTINUE,
+    T_SWITCH, T_CASE, T_DEFAULT,
+    T_STRUCT, T_TYPEDEF, T_CONST, T_SIZEOF,
+
+    T_IDENTIFIER,
+    T_INT_LITERAL,
+    T_FLOAT_LITERAL,
+    T_STRING_LITERAL,
+    T_CHAR_LITERAL,
+
+    T_PLUS, T_MINUS, T_MULT, T_DIV, T_MOD,
+    T_INCREMENT, T_DECREMENT,
+    T_ASSIGN, T_EQUAL, T_NOT_EQUAL,
+    T_GT, T_LT, T_GTE, T_LTE,
+    T_AND, T_OR, T_NOT,
+    T_BIT_AND, T_BIT_OR, T_XOR, T_BIT_NOT,
+    T_LSHIFT, T_RSHIFT,
+    T_PLUS_EQ, T_MINUS_EQ, T_MULT_EQ, T_DIV_EQ, T_MOD_EQ,
+
+    T_LPAREN, T_RPAREN,
+    T_LBRACE, T_RBRACE,
+    T_LBRACKET, T_RBRACKET,
+    T_SEMICOLON, T_COMMA, T_DOT,
+
+    T_UNKNOWN
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    char value[MAX_TOKEN_LENGTH];
+} Token;
+
+// ================= KEYWORDS =================
+const char* keywords[] = {
+    "int","float","double","char","void",
+    "if","else","while","for","do",
+    "return","break","continue",
+    "switch","case","default",
+    "struct","typedef","const","sizeof"
+};
+
+TokenType keywordTokens[] = {
+    T_INT,T_FLOAT,T_DOUBLE,T_CHAR,T_VOID,
+    T_IF,T_ELSE,T_WHILE,T_FOR,T_DO,
+    T_RETURN,T_BREAK,T_CONTINUE,
+    T_SWITCH,T_CASE,T_DEFAULT,
+    T_STRUCT,T_TYPEDEF,T_CONST,T_SIZEOF
+};
+
+int keywordCount = 20;
+
+// ================= CHECK KEYWORD =================
+TokenType checkKeyword(char* word) {
+    for (int i = 0; i < keywordCount; i++) {
+        if (strcmp(word, keywords[i]) == 0)
+            return keywordTokens[i];
+    }
+    return T_IDENTIFIER;
+}
+
+// ================= PRINT TOKEN =================
+void printToken(Token token) {
+    printf("Token: %-15s Type: %d\n", token.value, token.type);
+}
+
+// ================= MAIN LEXER FUNCTION =================
+void runLexer(const char* input) {
+
+    int i = 0;
+
+    while (input[i] != '\0') {
+
+        if (isspace(input[i])) { i++; continue; }
+
+        if (input[i] == '/' && input[i + 1] == '/') {
+            while (input[i] != '\n' && input[i] != '\0') i++;
+            continue;
+        }
+
+        if (input[i] == '/' && input[i + 1] == '*') {
+            i += 2;
+            while (!(input[i] == '*' && input[i + 1] == '/')) i++;
+            i += 2;
+            continue;
+        }
+
+        Token token;
+        int j = 0;
+
+        // IDENTIFIER / KEYWORD
+        if (isalpha(input[i]) || input[i] == '_') {
+            while (isalnum(input[i]) || input[i] == '_')
+                token.value[j++] = input[i++];
+            token.value[j] = '\0';
+
+            token.type = checkKeyword(token.value);
+            printToken(token);
+        }
+
+        // NUMBER
+        else if (isdigit(input[i])) {
+            int isFloat = 0;
+            while (isdigit(input[i]) || input[i] == '.') {
+                if (input[i] == '.') isFloat = 1;
+                token.value[j++] = input[i++];
+            }
+            token.value[j] = '\0';
+
+            token.type = isFloat ? T_FLOAT_LITERAL : T_INT_LITERAL;
+            printToken(token);
+        }
+
+        // STRING
+        else if (input[i] == '"') {
+            token.value[j++] = input[i++];
+            while (input[i] != '"' && input[i] != '\0')
+                token.value[j++] = input[i++];
+            token.value[j++] = input[i++];
+            token.value[j] = '\0';
+
+            token.type = T_STRING_LITERAL;
+            printToken(token);
+        }
+
+        // CHAR
+        else if (input[i] == '\'') {
+            token.value[j++] = input[i++];
+            token.value[j++] = input[i++];
+            token.value[j++] = input[i++];
+            token.value[j] = '\0';
+
+            token.type = T_CHAR_LITERAL;
+            printToken(token);
+        }
+
+        // OPERATORS
+        else {
+            char twoChar[3] = { input[i], input[i + 1], '\0' };
+
+            if (!strncmp(twoChar, "++", 2)) { token.type = T_INCREMENT; i += 2; strcpy(token.value, "++"); }
+            else if (!strncmp(twoChar, "--", 2)) { token.type = T_DECREMENT; i += 2; strcpy(token.value, "--"); }
+            else if (!strncmp(twoChar, "==", 2)) { token.type = T_EQUAL; i += 2; strcpy(token.value, "=="); }
+            else if (!strncmp(twoChar, "!=", 2)) { token.type = T_NOT_EQUAL; i += 2; strcpy(token.value, "!="); }
+            else if (!strncmp(twoChar, ">=", 2)) { token.type = T_GTE; i += 2; strcpy(token.value, ">="); }
+            else if (!strncmp(twoChar, "<=", 2)) { token.type = T_LTE; i += 2; strcpy(token.value, "<="); }
+            else if (!strncmp(twoChar, "&&", 2)) { token.type = T_AND; i += 2; strcpy(token.value, "&&"); }
+            else if (!strncmp(twoChar, "||", 2)) { token.type = T_OR; i += 2; strcpy(token.value, "||"); }
+
+            else {
+                char ch = input[i++];
+                token.value[0] = ch;
+                token.value[1] = '\0';
+
+                switch (ch) {
+                case '+': token.type = T_PLUS; break;
+                case '-': token.type = T_MINUS; break;
+                case '*': token.type = T_MULT; break;
+                case '/': token.type = T_DIV; break;
+                default: token.type = T_UNKNOWN;
+                }
+            }
+
+            printToken(token);
+        }
+    }
+}
